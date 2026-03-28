@@ -18,14 +18,23 @@ All public symbols use the `pdk_` prefix (functions) or `PDK_` prefix (macros).
 
 ## Usage
 
-pd-kit lives as a sibling directory to your game project. Add it to your game's Makefile:
+Add pd-kit as a git submodule in your game project:
+
+```bash
+git submodule add https://github.com/AverageZ/pd-kit.git pd-kit
+```
+
+Then wire it into your game's Makefile:
 
 ```makefile
-PDK = ../pd-kit
+PDK = pd-kit
 VPATH += src:$(PDK)/src
 SRC = src/main.c src/your_game.c \
       $(PDK)/src/pdk_crank.c $(PDK)/src/pdk_draw.c $(PDK)/src/pdk_save.c
 UINCDIR = src $(PDK)/src $(PDK)/include
+
+# Must appear before includes so compile_commands doesn't become default
+.DEFAULT_GOAL := all
 
 include $(PDK)/Makefile.inc
 include $(SDK)/C_API/buildsupport/common.mk
@@ -37,6 +46,8 @@ Include what you need:
 #include <pdk.h>          // everything
 #include <pdk_crank.h>    // or just individual modules
 ```
+
+> **Sibling directory alternative:** set `PDK = ../pd-kit` to reference pd-kit as a sibling directory instead of a submodule.
 
 ## Testing
 

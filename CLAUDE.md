@@ -26,14 +26,17 @@ A shared library of common Playdate game utilities.
 
 ## How Games Consume pd-kit
 
-Games reference pd-kit via relative path `../pd-kit/`. Add to your game's Makefile:
+Games add pd-kit as a git submodule (or reference it as a sibling directory via `../pd-kit`). Add to your game's Makefile:
 
 ```makefile
-PDK = ../pd-kit
+PDK = pd-kit
 VPATH += src:$(PDK)/src
 SRC = src/main.c src/draw.c src/your_game.c \
       $(PDK)/src/pdk_crank.c $(PDK)/src/pdk_draw.c $(PDK)/src/pdk_save.c
 UINCDIR = src $(PDK)/src $(PDK)/include
+
+# Must appear before includes so compile_commands doesn't become default
+.DEFAULT_GOAL := all
 
 include $(PDK)/Makefile.inc
 include $(SDK)/C_API/buildsupport/common.mk
@@ -125,5 +128,5 @@ pd-kit/
 ## Anti-Requirements
 
 - **No standalone binary** — pd-kit is always compiled as part of a game
-- **No version pinning** — all games always use the latest pd-kit
+- **No version pinning** — all games always use the latest pd-kit (submodules track `main` HEAD)
 - **No game-specific code** — mechanics, assets, and state machines stay in game projects

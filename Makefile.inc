@@ -4,7 +4,7 @@
 # Provides SDK detection and compile_commands target.
 #
 # Usage in a consuming Makefile:
-#   PDK = ../pd-kit
+#   PDK = pd-kit
 #   VPATH += src:$(PDK)/src
 #   SRC = src/main.c src/draw.c ... $(PDK)/src/pdk_crank.c ...
 #   UINCDIR = src $(PDK)/src $(PDK)/include
