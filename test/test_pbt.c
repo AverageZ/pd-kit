@@ -54,6 +54,19 @@ static void test_pbt_bool_values(void) {
     printf("  PASS: pbt_bool produces both 0 and 1\n");
 }
 
+static void test_pbt_weighted_distribution(void) {
+    PBTRng rng = pbt_rng_seed(2024);
+    int hits = 0;
+    int runs = 10000;
+    for (int i = 0; i < runs; i++) {
+        hits += pbt_weighted(&rng, 75);
+    }
+    /* 75% of 10000 = 7500; allow +-5% tolerance (7000–8000) */
+    assert(hits > 7000 && hits < 8000);
+    printf("  PASS: pbt_weighted(75) hits %d/%d (~%.0f%%)\n", hits, runs,
+           100.0 * hits / runs);
+}
+
 /* ── Determinism test ─────────────────────────────────────────────── */
 
 static void test_deterministic(void) {
@@ -105,6 +118,7 @@ int main(void) {
     test_pbt_float_range();
     test_pbt_enum_range();
     test_pbt_bool_values();
+    test_pbt_weighted_distribution();
 
     printf("\ndeterminism:\n");
     test_deterministic();

@@ -17,6 +17,7 @@
 
 #include "pbt.h"
 
+#include <assert.h>
 #include <stdio.h>
 
 /* ── xorshift64 RNG ───────────────────────────────────────────────── */
@@ -40,6 +41,7 @@ PBTRng pbt_rng_seed(uint64_t seed) {
 /* ── Generators ───────────────────────────────────────────────────── */
 
 int pbt_int(PBTRng *rng, int min, int max) {
+    assert(min <= max && "pbt_int: min must be <= max");
     if (min >= max)
         return min;
     uint64_t raw = xorshift64(&rng->state);
@@ -48,6 +50,7 @@ int pbt_int(PBTRng *rng, int min, int max) {
 }
 
 float pbt_float(PBTRng *rng, float min, float max) {
+    assert(min <= max && "pbt_float: min must be <= max");
     if (min >= max)
         return min;
     uint64_t raw = xorshift64(&rng->state);
@@ -57,6 +60,7 @@ float pbt_float(PBTRng *rng, float min, float max) {
 }
 
 int pbt_enum(PBTRng *rng, int count) {
+    assert(count > 0 && "pbt_enum: count must be > 0");
     if (count <= 1)
         return 0;
     return pbt_int(rng, 0, count - 1);
