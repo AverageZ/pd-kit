@@ -4,10 +4,7 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "0"
   },
   "permissions": {
-    "allow": [
-      "Read(//Users/alexzajac/projects/strategy-game/**)",
-      "Bash(gh label:*)"
-    ]
+    "allow": ["Bash(gh label:*)"]
   },
   "hooks": {
     "PostToolUse": [
