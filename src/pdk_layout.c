@@ -70,13 +70,14 @@ void pdk_layout_text_italic(PdkLayout *L, const char *text, PdkAlign align) {
 }
 
 void pdk_layout_menu_item(PdkLayout *L, const char *text, int selected) {
-    const int padY = 2;      /* vertical padding above text in highlight */
-    const int extraGap = 6;  /* extra spacing between menu items (beyond lineGap) */
+    const int extraGap = 6; /* extra spacing between menu items (beyond lineGap) */
+    const int boxH = L->lineGap + extraGap;
+    int fontH = pd->graphics->getFontHeight(fontRegular);
+    int padY = (boxH - fontH) / 2; /* center text vertically in highlight */
 
     if (selected) {
         pd->graphics->fillRect(L->marginX, L->y - padY,
-                               LCD_COLUMNS - 2 * L->marginX,
-                               L->lineGap + extraGap,
+                               LCD_COLUMNS - 2 * L->marginX, boxH,
                                kColorBlack);
         pd->graphics->setDrawMode(kDrawModeInverted);
     }
@@ -86,7 +87,7 @@ void pdk_layout_menu_item(PdkLayout *L, const char *text, int selected) {
     if (selected)
         pd->graphics->setDrawMode(kDrawModeCopy);
 
-    L->y += L->lineGap + extraGap;
+    L->y += boxH;
 }
 
 void pdk_layout_divider(PdkLayout *L) {
