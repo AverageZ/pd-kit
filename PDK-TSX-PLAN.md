@@ -41,14 +41,15 @@ Every module is built test-first. The workflow for each phase:
 
 **Unit tests per module:**
 
-| Module           | Test focus                                                          | PBT candidates                                                                                      |
-| ---------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `parse.ts`       | TSX string → AST nodes; rejects unsupported constructs              | Random valid/invalid TSX fragments (fast-check `string` + `oneof`)                                  |
-| `validate.ts`    | Allowlist enforcement; error messages include file:line:col         | Random AST nodes with forbidden constructs                                                          |
-| `ir.ts`          | AST → IR mapping; fragment flattening; expression conversion        | Round-trip: generate random IR, emit TSX, re-parse, compare IR                                      |
-| `emit-c.ts`      | IR → C string; buffer sizing; static array emission; include guards | Random IR trees → verify output compiles with `cc -fsyntax-only`                                    |
-| `emit-canvas.ts` | IR → Canvas calls; cursor advance matches C constants               | Same IR → compare Canvas pixel output vs C reference harness pixel output (see §Dual-Output Parity) |
-| `font-parser.ts` | `.fnt` parsing; `getTextWidth`; `fontHeight`                        | Random strings → width is sum of char widths + tracking\*(len-1)                                    |
+| Module           | Test focus                                                                                        | PBT candidates                                                                                           |
+| ---------------- | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `parse.ts`       | TSX string → AST nodes; rejects unsupported constructs                                            | Random valid/invalid TSX fragments (fast-check `string` + `oneof`)                                       |
+| `validate.ts`    | Allowlist enforcement; error messages include file:line:col                                       | Random AST nodes with forbidden constructs                                                               |
+| `ir.ts`          | AST → IR mapping; fragment flattening; expression conversion                                      | Round-trip: generate random IR, emit TSX, re-parse, compare IR                                           |
+| `emit-c.ts`      | IR → C string; buffer sizing; static array emission; include guards                               | Random IR trees → verify output compiles with `cc -fsyntax-only`                                         |
+| `emit-canvas.ts` | IR → Canvas calls; cursor advance matches C constants                                             | Same IR → compare Canvas pixel output vs C reference harness pixel output (see §Dual-Output Parity)      |
+| `font-parser.ts` | `.fnt` parsing; `getTextWidth`; `fontHeight`                                                      | Random strings → width is sum of char widths + tracking\*(len-1)                                         |
+| `wrap.ts`        | Word wrap: fits-in-one-line, exact-fit, break-on-word, long-single-word, whitespace normalization | Random strings × random widths → every line ≤ maxWidth; joined lines = original text (modulo whitespace) |
 
 **Fixture tests:** Each example in "Concrete Examples" becomes a fixture test: `.tsx` input → expected `.c` + `.h` output (exact string match).
 
@@ -58,21 +59,22 @@ Every module is built test-first. The workflow for each phase:
 
 **Supported:**
 
-| Construct                           | Example                          | C Equivalent                                                                  |
-| ----------------------------------- | -------------------------------- | ----------------------------------------------------------------------------- |
-| Function component with typed props | `function TitleScreen(p: Props)` | `void drawTitleScreen(int bestScore, ...)`                                    |
-| `number` prop                       | `bestScore: number`              | `int` parameter                                                               |
-| `boolean` prop                      | `confirmed: boolean`             | `int` parameter (0/1)                                                         |
-| `string` prop                       | `name: string`                   | `const char *` parameter                                                      |
-| `string[]` prop                     | `names: string[]`                | `const char *const *` + auto `int namesCount`                                 |
-| `number[]` prop                     | `scores: number[]`               | `const int *` + auto `int scoresCount`                                        |
-| Ternary expressions                 | `{x ? <A/> : <B/>}`              | `if (x) { ... } else { ... }`                                                 |
-| Logical AND                         | `{x && <A/>}`                    | `if (x) { ... }`                                                              |
-| `.map()` on arrays                  | `{items.map((item, i) => ...)}`  | `for (int i = 0; i < count; i++)` — see note below                            |
-| Template literals                   | ``{`Score: ${pts} pts`}``        | `snprintf(buf, sizeof(buf), "Score: %d pts", pts)`                            |
-| Static string arrays                | `const labels = ["A", "B"]`      | `static const char *screenName_labels[2] = {"A", "B"}` (file-scope, prefixed) |
-| Comparison/arithmetic in props      | `selected={i === choice}`        | `i == choice`                                                                 |
-| Fragments                           | `<>...</>`                       | (flattened)                                                                   |
+| Construct                           | Example                               | C Equivalent                                                                  |
+| ----------------------------------- | ------------------------------------- | ----------------------------------------------------------------------------- |
+| Function component with typed props | `function TitleScreen(p: Props)`      | `void drawTitleScreen(int bestScore, ...)`                                    |
+| `number` prop                       | `bestScore: number`                   | `int` parameter                                                               |
+| `boolean` prop                      | `confirmed: boolean`                  | `int` parameter (0/1)                                                         |
+| `string` prop                       | `name: string`                        | `const char *` parameter                                                      |
+| `string[]` prop                     | `names: string[]`                     | `const char *const *` + auto `int namesCount`                                 |
+| `number[]` prop                     | `scores: number[]`                    | `const int *` + auto `int scoresCount`                                        |
+| Ternary expressions                 | `{x ? <A/> : <B/>}`                   | `if (x) { ... } else { ... }`                                                 |
+| Logical AND                         | `{x && <A/>}`                         | `if (x) { ... }`                                                              |
+| `.map()` on arrays                  | `{items.map((item, i) => ...)}`       | `for (int i = 0; i < count; i++)` — see note below                            |
+| Template literals                   | ``{`Score: ${pts} pts`}``             | `snprintf(buf, sizeof(buf), "Score: %d pts", pts)`                            |
+| Static string arrays                | `const labels = ["A", "B"]`           | `static const char *screenName_labels[2] = {"A", "B"}` (file-scope, prefixed) |
+| Comparison/arithmetic in props      | `selected={i === choice}`             | `i == choice`                                                                 |
+| Fragments                           | `<>...</>`                            | (flattened)                                                                   |
+| `<Paragraph>` auto-wrap             | `<Paragraph>Long text...</Paragraph>` | Multiple `pdk_layout_text()` calls (word-wrapped at transpile time)           |
 
 **`.map()` disambiguation:**
 
@@ -100,45 +102,107 @@ When layouts are in mutually exclusive branches (ternary), scoping is already pr
 - `boolean[]` arrays (only `string[]` and `number[]` supported)
 - Complex screens with heavy procedural drawing stay hand-written in C
 
-**Validation approach:** The validator uses an **allowlist** — only the constructs listed in the "Supported" table are accepted. Everything else produces a hard transpile error with file, line, and column. This is safer than a denylist since TypeScript has hundreds of syntax nodes.
+**Validation approach — three layers:**
+
+1. **TS types (static, in-editor):** A `jsx.d.ts` ships JSX intrinsic element definitions (`Screen`, `Layout`, `Text`, `MenuItem`, `Paragraph`, etc.) with exact prop signatures. This catches element API misuse — wrong props, missing required props, unsupported elements — as red squiggles in VS Code before the transpiler runs. A `PdkPropType` utility type restricts prop values to `number | boolean | string | string[] | number[]`, rejecting `boolean[]`, objects, functions, etc. `MenuItem` omits `align` (hardcoded center in C). `Paragraph` accepts `align` and static string children (same as `Text` but word-wraps at transpile time). `Screen` requires `border` (as `number | "tight" | "standard" | "wide"`). `Layout` accepts either `align` + optional `padding` or `y` (not both). `Gap` accepts either `size` or `pixels` (not both).
+2. **Custom ESLint rules (in-editor + CI lint):** Catches structural patterns that TS types cannot express — constraints involving children composition, nesting depth, or cross-element relationships. These run as standard ESLint rules using `@typescript-eslint/utils`, each a single-file AST visitor (~30-50 lines).
+3. **AST allowlist validator (runtime, at transpile):** Only the constructs listed in the "Supported" table are accepted. Everything else produces a hard transpile error with file, line, and column. This catches syntactic restrictions that TS types and ESLint cannot enforce: `let`/`var`, closures, hooks, classes, optional chaining, spread, switch, etc. This is safer than a denylist since TypeScript has hundreds of syntax nodes.
+
+The three layers are complementary — TS types catch "wrong props on the right element" instantly in the editor; ESLint rules catch "wrong children structure" at save/lint time; the AST validator catches "language feature we can't transpile" at build time.
+
+**Custom ESLint rules:**
+
+| Rule                                     | What it catches                                                          |
+| ---------------------------------------- | ------------------------------------------------------------------------ |
+| `pdk-tsx/no-nested-map`                  | `.map()` inside another `.map()` callback                                |
+| `pdk-tsx/no-dynamic-paragraph`           | `<Paragraph>` with template literal, prop reference, or mixed children   |
+| `pdk-tsx/no-conditional-centered-layout` | `<Layout align="center">` containing ternary, `&&`, or `.map()` children |
+| `pdk-tsx/no-boolean-template`            | `${booleanProp}` inside Text template literals                           |
+| `pdk-tsx/no-mixed-text-children`         | `<Text>` with both static string and expression children                 |
 
 **Edge case rulings:**
 
-| Case                                     | Ruling                                                                                                                                                                                                                                      |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Nested ternaries (`a ? (b ? X : Y) : Z`) | **Allowed** — emits nested `if/else`, valid C                                                                                                                                                                                               |
-| Nested `.map()`                          | **Hard error** — C loop nesting adds complexity; flatten in TSX or hand-write in C                                                                                                                                                          |
-| Empty `<Screen>` (no layouts)            | **Hard error** — intentional, no empty draw functions                                                                                                                                                                                       |
-| Empty `<Layout>` (no children)           | **Hard error** — wasteful, likely a mistake                                                                                                                                                                                                 |
-| Adjacent `.map()` in same layout         | **Allowed** — each loop body is wrapped in `{ }` braces; index var `i` is scoped per block                                                                                                                                                  |
-| `.map()` callback naming                 | Emitter always uses `i` for index, ignoring user's chosen name. The item name is used as-is for the loop variable in C (e.g., `(label, i)` → loop body references `victoryChoiceLabels[i]` for const arrays, or `names[i]` for prop arrays) |
-| `.map((item)` with no index)             | **Allowed** — index `i` still generated for the loop bound; item name used for references                                                                                                                                                   |
-| `.map((_, i)` unused item)               | **Allowed** — `_` is ignored; only index used                                                                                                                                                                                               |
-| Duplicate screen names across files      | **Hard error** — detected at emit time, reports both files                                                                                                                                                                                  |
+| Case                                              | Ruling                                                                                                                                                                                                                                      | Layer     |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| Nested ternaries (`a ? (b ? X : Y) : Z`)          | **Allowed** — emits nested `if/else`, valid C                                                                                                                                                                                               | —         |
+| Nested `.map()`                                   | **Hard error** — C loop nesting adds complexity; flatten in TSX or hand-write in C                                                                                                                                                          | ESLint    |
+| Empty `<Screen>` (no layouts)                     | **Hard error** — intentional, no empty draw functions                                                                                                                                                                                       | TS types  |
+| Empty `<Layout>` (no children)                    | **Hard error** — wasteful, likely a mistake                                                                                                                                                                                                 | TS types  |
+| Adjacent `.map()` in same layout                  | **Allowed** — each loop body is wrapped in `{ }` braces; index var `i` is scoped per block                                                                                                                                                  | —         |
+| `.map()` callback naming                          | Emitter always uses `i` for index, ignoring user's chosen name. The item name is used as-is for the loop variable in C (e.g., `(label, i)` → loop body references `victoryChoiceLabels[i]` for const arrays, or `names[i]` for prop arrays) | —         |
+| `.map((item)` with no index)                      | **Allowed** — index `i` still generated for the loop bound; item name used for references                                                                                                                                                   | —         |
+| `.map((_, i)` unused item)                        | **Allowed** — `_` is ignored; only index used                                                                                                                                                                                               | —         |
+| Duplicate screen names across files               | **Hard error** — detected at emit time, reports both files                                                                                                                                                                                  | Emit-time |
+| `<Layout>` with both `align` and `y`              | **Hard error** — mutually exclusive positioning modes                                                                                                                                                                                       | TS types  |
+| `<Layout align="center">` with conditionals/loops | **Hard error** — content height must be statically determinable; use `y={N}`                                                                                                                                                                | ESLint    |
+| `<Layout align="center" padding={10}>`            | **Hard error** — `padding` only valid with `align="top"` or `align="bottom"`                                                                                                                                                                | TS types  |
+| `<Layout padding={10}>` (no `align`)              | **Hard error** — `padding` requires `align`                                                                                                                                                                                                 | TS types  |
+| `<Gap>` with both `size` and `pixels`             | **Hard error** — exactly one sizing mode required                                                                                                                                                                                           | TS types  |
+| `<Gap>` with neither `size` nor `pixels`          | **Hard error** — exactly one sizing mode required                                                                                                                                                                                           | TS types  |
+| `<Paragraph>` with template literal               | **Hard error** — word-wrap requires static text known at transpile time; use multiple `<Text>` for dynamic content                                                                                                                          | ESLint    |
+| `<Paragraph>` with prop reference                 | **Hard error** — same reason as template literals                                                                                                                                                                                           | ESLint    |
+| `<Paragraph>` text fits on one line               | **Allowed** — degenerates to single `pdk_layout_text()` call (same as `<Text>`)                                                                                                                                                             | —         |
+| `<Paragraph>` with single long word               | **Allowed** — word emitted on its own line as-is (no mid-word breaking)                                                                                                                                                                     | —         |
+
+## Spacing Scale
+
+Named tokens replace raw pixel values for common cases. Raw ints are always accepted as escape hatches.
+
+| Token        | `<Gap>` pixels | `<Screen>` border |
+| ------------ | -------------- | ----------------- |
+| `"xs"`       | 3              | —                 |
+| `"sm"`       | 6              | —                 |
+| `"md"`       | 13             | —                 |
+| `"lg"`       | 22             | —                 |
+| `"tight"`    | —              | 8                 |
+| `"standard"` | —              | 16                |
+| `"wide"`     | —              | 24                |
+
+Tokens are resolved to ints during AST→IR — the IR and emitters never see strings.
 
 ## Component API → C Mapping
 
 ```tsx
-<Screen border={16}>              → pdk_draw_border(16);
-<Layout y={30} lineGap={20}       → PdkLayout L = pdk_layout_start_ex(30, 20, 40);
+<Screen border="standard">          → pdk_draw_border(16);   // "tight"=8, "standard"=16, "wide"=24
+<Screen border={20}>                → pdk_draw_border(20);   // raw int escape hatch
+
+<Layout align="center">             → PdkLayout L = pdk_layout_start(Y); // Y computed at transpile time
+<Layout align="top" padding={20}>   → PdkLayout L = pdk_layout_start(20);
+<Layout align="bottom" padding={10}>→ PdkLayout L = pdk_layout_start(Y); // Y = 240 - contentHeight - 10
+<Layout y={80}>                     → PdkLayout L = pdk_layout_start(80); // raw int escape hatch
+<Layout y={30} lineGap={20}         → PdkLayout L = pdk_layout_start_ex(30, 20, 40);
         marginX={40}>
-<Text align="center">Hello</Text> → pdk_layout_text(&L, "Hello", PDK_ALIGN_CENTER);
-<ItalicText>sub</ItalicText>      → pdk_layout_text_italic(&L, "sub", PDK_ALIGN_CENTER);
-<MenuItem selected={i===0}>Go     → pdk_layout_menu_item(&L, "Go", i == 0);
+
+<Text align="center">Hello</Text>   → pdk_layout_text(&L, "Hello", PDK_ALIGN_CENTER);
+<ItalicText>sub</ItalicText>        → pdk_layout_text_italic(&L, "sub", PDK_ALIGN_CENTER);
+<MenuItem selected={i===0}>Go       → pdk_layout_menu_item(&L, "Go", i == 0);
   </MenuItem>
-<Divider />                       → pdk_layout_divider(&L);
-<Gap pixels={13} />               → pdk_layout_gap(&L, 13);
-<CursorSet y={195} />             → L.y = 195;
-<CursorShift y={-20} />           → L.y += -20;
-<MarginSet x={90} />              → L.marginX = 90;
+<Divider />                         → pdk_layout_divider(&L);
+<Gap size="sm" />                   → pdk_layout_gap(&L, 6);  // "xs"=3, "sm"=6, "md"=13, "lg"=22
+<Gap pixels={13} />                 → pdk_layout_gap(&L, 13); // raw int escape hatch
+<CursorSet y={195} />               → L.y = 195;
+<CursorShift y={-20} />             → L.y += -20;
+<MarginSet x={90} />                → L.marginX = 90;
+
+<Paragraph>Champion of the Tilt   → pdk_layout_text(&L, "Champion of the Tilt", PDK_ALIGN_CENTER);
+  at Eshkar's Ford!</Paragraph>      pdk_layout_text(&L, "at Eshkar's Ford!", PDK_ALIGN_CENTER);
+                                   // word-wrapped at transpile time using font metrics + available width
 ```
 
-Default `align` is `"center"` (the most common case in Playdate games).
+Default `align` is `"center"` for text (the most common case in Playdate games).
 
 **`<Layout>` emit rules:**
 
-- `<Layout y={N}>` (no `lineGap`/`marginX`) → `pdk_layout_start(N)` — uses defaults: lineGap=22, marginX=30
-- `<Layout y={N} lineGap={G} marginX={M}>` → `pdk_layout_start_ex(N, G, M)` — both `lineGap` and `marginX` must be provided together (they map to a single `_ex` call)
+- **`align` mode** (mutually exclusive with `y`):
+  - `<Layout align="center">` → transpiler computes `y = (240 - contentHeight) / 2` at transpile time
+  - `<Layout align="top" padding={P}>` → `y = P` (default padding: 0)
+  - `<Layout align="bottom" padding={P}>` → `y = 240 - contentHeight - P` (default padding: 0)
+  - `padding` is only valid with `align="top"` or `align="bottom"` — using it with `align="center"` is a hard transpile error
+  - **Static content required:** `align` is a hard transpile error if the Layout contains conditionals or loops (content height varies at runtime). Use `y={N}` instead.
+- **`y` mode** (raw int escape hatch):
+  - `<Layout y={N}>` (no `lineGap`/`marginX`) → `pdk_layout_start(N)` — uses defaults: lineGap=22, marginX=30
+  - `<Layout y={N} lineGap={G} marginX={M}>` → `pdk_layout_start_ex(N, G, M)` — both `lineGap` and `marginX` must be provided together (they map to a single `_ex` call)
+- `lineGap` and `marginX` work the same in both modes
 
 **`<MenuItem>` does not accept `align`** — the C function `pdk_layout_menu_item` hardcodes center alignment. Passing `align` to `<MenuItem>` is a hard transpile error.
 
@@ -153,9 +217,56 @@ Default `align` is `"center"` (the most common case in Playdate games).
 
 **`<ItalicText>` accepts `align`** just like `<Text>`. Same children rules apply.
 
-**`<Screen>` props:** `border` is required — every screen must declare its corner size. Omitting `border` is a hard transpile error (forces intentional design).
+**`<Paragraph>` children rules:**
 
-**Layout-only children:** `<Text>`, `<ItalicText>`, `<MenuItem>`, `<Divider>`, `<Gap>`, `<CursorSet>`, `<CursorShift>`, and `<MarginSet>` are only valid inside a `<Layout>`. Using them directly under `<Screen>` is a hard transpile error.
+- Static string only: `<Paragraph>Champion of the Tilt at Eshkar's Ford!</Paragraph>` → word-wrapped at transpile time into multiple `pdk_layout_text()` calls
+- Template literals → **hard transpile error**: _"Paragraph requires static text for transpile-time word wrapping. Use multiple `<Text>` elements for dynamic content."_
+- Prop references → **hard transpile error** (same reason)
+- Mixed static + dynamic → **hard transpile error** (same reason)
+- Whitespace normalization: all whitespace (newlines, tabs, multiple spaces) collapsed to single spaces before wrapping
+- Accepts `align` prop (same as `<Text>`, default `"center"`)
+- If text fits on one line, emits a single `pdk_layout_text()` (degenerates to `<Text>`)
+
+**`<Paragraph>` word-wrap algorithm (transpile-time):**
+
+The transpiler computes line breaks at transpile time using `font-parser.ts` metrics:
+
+1. Compute available width: `400 - 2 * marginX` (from parent `<Layout>`, default marginX=30 → 340px)
+2. Collapse and trim whitespace in the text content
+3. Split on spaces into words
+4. Greedy line-fill: accumulate words (measuring with `getTextWidth()`), emit a line break when the next word would exceed available width
+5. Each resulting line emits one `pdk_layout_text(&L, "line", align)` call
+
+Implementation: ~30-line `wrapText(text: string, maxWidth: number, font: PdkFont): string[]` utility in `wrap.ts`. A single word longer than `maxWidth` is emitted as-is on its own line (no mid-word breaking).
+
+**`<Screen>` props:** `border` is required — every screen must declare its corner size (as a named token or raw int). Omitting `border` is a hard transpile error (forces intentional design).
+
+**`<Gap>` props:** Exactly one of `size` (named token) or `pixels` (raw int) is required. Providing both or neither is a hard transpile error.
+
+**Layout-only children:** `<Text>`, `<ItalicText>`, `<Paragraph>`, `<MenuItem>`, `<Divider>`, `<Gap>`, `<CursorSet>`, `<CursorShift>`, and `<MarginSet>` are only valid inside a `<Layout>`. Using them directly under `<Screen>` is a hard transpile error.
+
+## Transpile-Time Content Height Calculation
+
+When a `<Layout>` uses `align` instead of `y`, the transpiler computes total content height at transpile time by summing child advances:
+
+| Operation           | Advance                                                     |
+| ------------------- | ----------------------------------------------------------- |
+| `text`/`italicText` | lineGap (default 22)                                        |
+| `menuItem`          | lineGap + 6                                                 |
+| `divider`           | 12 (fixed)                                                  |
+| `gap` (named)       | spacing scale lookup                                        |
+| `gap` (raw)         | pixels value                                                |
+| `paragraph`         | lineGap × lineCount (line count computed at transpile time) |
+
+Resolution:
+
+- `align="center"` → `y = (240 - contentHeight) / 2`
+- `align="top"` → `y = padding` (default 0)
+- `align="bottom"` → `y = 240 - contentHeight - padding` (default 0)
+
+The result is a concrete `y: number` in the IR — emitters are unaware that `align` existed. This computation happens in `ir.ts` during AST→IR construction.
+
+**Static content requirement:** All children must have deterministic height. If a Layout using `align` contains conditionals (`{x && ...}`, ternaries) or loops (`.map()`), the transpiler emits a hard error: _"Layout with align cannot contain conditionals or loops — content height must be statically determinable. Use y={N} instead."_
 
 ## Canvas Renderer — Cursor Advance Reference
 
@@ -219,13 +330,13 @@ type Props = {
 
 export function ConfirmNewGameScreen({ choice }: Props) {
   return (
-    <Screen border={16}>
-      <Layout y={80}>
+    <Screen border="standard">
+      <Layout align="center">
         <Text>Start a new game?</Text>
-        <Gap pixels={3} />
+        <Gap size="xs" />
         <ItalicText>This will erase all progress.</ItalicText>
         <Divider />
-        <Gap pixels={6} />
+        <Gap size="sm" />
         <MenuItem selected={choice === 0}>No, go back</MenuItem>
         <MenuItem selected={choice === 1}>Yes, start over</MenuItem>
       </Layout>
@@ -239,7 +350,7 @@ export function ConfirmNewGameScreen({ choice }: Props) {
 ```c
 void drawConfirmNewGameScreen(int choice) {
     pdk_draw_border(16);
-    PdkLayout L = pdk_layout_start(80);
+    PdkLayout L = pdk_layout_start(59); /* align="center": (240 - 121) / 2 */
     pdk_layout_text(&L, "Start a new game?", PDK_ALIGN_CENTER);
     pdk_layout_gap(&L, 3);
     pdk_layout_text_italic(&L, "This will erase all progress.", PDK_ALIGN_CENTER);
@@ -263,13 +374,15 @@ type Props = {
 
 export function TitleScreen({ bestScore, hasSave, titleChoice }: Props) {
   return (
-    <Screen border={16}>
+    <Screen border="standard">
       <Layout y={80}>
+        {' '}
+        {/* raw y — intentional non-centered placement; align unavailable (conditionals) */}
         <Text>Steady On!</Text>
-        <Gap pixels={3} />
+        <Gap size="xs" />
         {bestScore > 0 && <Text>{`Best: ${bestScore} pts`}</Text>}
         <Divider />
-        <Gap pixels={6} />
+        <Gap size="sm" />
         {hasSave ? (
           <>
             <MenuItem selected={titleChoice === 0}>Continue</MenuItem>
@@ -291,14 +404,14 @@ void drawTitleScreen(int bestScore, int hasSave, int titleChoice) {
     pdk_draw_border(16);
     PdkLayout L = pdk_layout_start(80);
     pdk_layout_text(&L, "Steady On!", PDK_ALIGN_CENTER);
-    pdk_layout_gap(&L, 3);
+    pdk_layout_gap(&L, 3); /* size="xs" */
     if (bestScore > 0) {
         char _buf0[32];
         snprintf(_buf0, sizeof(_buf0), "Best: %d pts", bestScore);
         pdk_layout_text(&L, _buf0, PDK_ALIGN_CENTER);
     }
     pdk_layout_divider(&L);
-    pdk_layout_gap(&L, 6);
+    pdk_layout_gap(&L, 6); /* size="sm" */
     if (hasSave) {
         pdk_layout_menu_item(&L, "Continue", titleChoice == 0);
         pdk_layout_menu_item(&L, "New Game", titleChoice == 1);
@@ -331,7 +444,7 @@ export function TournamentVictoryScreen({
   tournamentScore,
 }: Props) {
   return (
-    <Screen border={16}>
+    <Screen border="standard">
       {!confirmed ? (
         <Layout y={30} lineGap={20} marginX={40}>
           <Text>Champion of the Tilt</Text>
@@ -406,7 +519,7 @@ type Props = {
 
 export function ScoreBoardScreen({ names, scores }: Props) {
   return (
-    <Screen border={16}>
+    <Screen border="standard">
       <Layout y={40} marginX={40} lineGap={20}>
         <Text>High Scores</Text>
         <Divider />
@@ -449,6 +562,7 @@ void drawScoreBoardScreen(const char *const *names, int namesCount,
 #include "pdk_layout.h"
 
 void drawConfirmNewGameScreen(int choice);
+void drawLoreScreen(int choice);
 void drawTitleScreen(int bestScore, int hasSave, int titleChoice);
 void drawTournamentVictoryScreen(int choice, int confirmed, int tournamentScore);
 void drawScoreBoardScreen(const char *const *names, int namesCount,
@@ -470,6 +584,50 @@ The `.c` file begins with:
 ```
 
 Function ordering in the `.c` and `.h` follows alphabetical order by screen name. The `.h` includes a `/* TitleScreen.tsx */` comment before each prototype for traceability.
+
+### Example 5: Paragraph Auto-Wrapping
+
+**Input** (`LoreScreen.tsx`):
+
+```tsx
+type Props = {
+  choice: number;
+};
+
+export function LoreScreen({ choice }: Props) {
+  return (
+    <Screen border="standard">
+      <Layout y={30} lineGap={20} marginX={40}>
+        <Paragraph>
+          Champion of the Tilt at Eshkar's Ford! The crowd roars as you raise
+          your lance.
+        </Paragraph>
+        <Divider />
+        <MenuItem selected={choice === 0}>Continue</MenuItem>
+        <MenuItem selected={choice === 1}>Return to camp</MenuItem>
+      </Layout>
+    </Screen>
+  );
+}
+```
+
+**Output** (`.c`) — assuming font metrics break at ~320px available width (400 - 2×40):
+
+```c
+void drawLoreScreen(int choice) {
+    pdk_draw_border(16);
+    PdkLayout L = pdk_layout_start_ex(30, 20, 40);
+    /* <Paragraph> — word-wrapped at transpile time */
+    pdk_layout_text(&L, "Champion of the Tilt at", PDK_ALIGN_CENTER);
+    pdk_layout_text(&L, "Eshkar's Ford! The crowd roars", PDK_ALIGN_CENTER);
+    pdk_layout_text(&L, "as you raise your lance.", PDK_ALIGN_CENTER);
+    pdk_layout_divider(&L);
+    pdk_layout_menu_item(&L, "Continue", choice == 0);
+    pdk_layout_menu_item(&L, "Return to camp", choice == 1);
+}
+```
+
+Note: exact line breaks depend on the loaded `.fnt` font metrics. The comment in the C output aids traceability back to the `<Paragraph>` source element.
 
 ## IR Type Definitions
 
@@ -508,6 +666,11 @@ type OpIR =
   | { kind: 'cursorSet'; y: number }
   | { kind: 'cursorShift'; y: number | ExprIR }
   | { kind: 'marginSet'; x: number }
+  | {
+      kind: 'paragraph';
+      lines: string[];
+      align: 'left' | 'center' | 'right';
+    }
   | { kind: 'conditional'; condition: ExprIR; then: OpIR[]; else?: OpIR[] }
   | {
       kind: 'loop';
@@ -579,13 +742,16 @@ pd-kit/tools/pdk-tsx/
 │   ├── emit-c.ts             # IR → .c/.h strings
 │   ├── emit-canvas.ts        # IR → Canvas render functions
 │   ├── font-parser.ts        # Parse Playdate .fnt + companion bitmap PNG
+│   ├── wrap.ts               # Transpile-time word wrapping using font metrics
 │   ├── canvas-renderer.ts    # 400x240 1-bit canvas (PdkCanvasRenderer)
-│   └── types.ts              # IR type definitions
+│   ├── types.ts              # IR type definitions
+│   └── jsx.d.ts              # JSX intrinsic element types for in-editor validation
 ├── test/
 │   ├── parse.test.ts
 │   ├── emit-c.test.ts
 │   ├── emit-canvas.test.ts
 │   ├── font-parser.test.ts
+│   ├── wrap.test.ts
 │   ├── parity.test.ts        # Canvas vs C reference harness pixel comparison
 │   ├── fixtures/             # .tsx inputs + expected .c/.h outputs
 │   └── golden/               # Blessed PNGs captured from Playdate Simulator
@@ -675,15 +841,15 @@ void drawConfirmNewGameScreen(int choice) {
 
 ## Implementation Phases
 
-| Phase | What                          | Description                                                                                        |
-| ----- | ----------------------------- | -------------------------------------------------------------------------------------------------- |
-| 1     | IR types + parser + validator | Define `ScreenIR`/`OpIR`/`ExprIR`, parse TSX via TS compiler API, validate subset                  |
-| 2     | C emitter                     | IR → `.c`/`.h` generation with snprintf buffers, static arrays, for loops, if/else                 |
-| 3     | CLI tool                      | `--screens`, `--outDir`, `--watch` modes                                                           |
-| 4     | Font parser                   | Parse `.fnt` format + bitmap table PNG, text measurement + rendering                               |
-| 5     | Canvas renderer + constants   | Extract shared `constants.ts`; port `pdk_layout.c`/`pdk_draw.c` to TS, render to `@napi-rs/canvas` |
-| 6     | Snapshot testing              | `renderScreen()` → PNG, `toMatchPlaydateSnapshot()` vitest matcher, golden masters from simulator  |
-| 7     | C reference harness + parity  | Build C harness, pixel-level PBT (Canvas vs C), CI drift detection, validate with real screens     |
+| Phase | What                                      | Description                                                                                                                                                                 |
+| ----- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | IR types + parser + validator + JSX types | Define `ScreenIR`/`OpIR`/`ExprIR`, parse TSX via TS compiler API, validate subset, ship `jsx.d.ts` with intrinsic element definitions for in-editor prop/element validation |
+| 2     | C emitter                                 | IR → `.c`/`.h` generation with snprintf buffers, static arrays, for loops, if/else                                                                                          |
+| 3     | CLI tool                                  | `--screens`, `--outDir`, `--watch` modes                                                                                                                                    |
+| 4     | Font parser                               | Parse `.fnt` format + bitmap table PNG, text measurement + rendering                                                                                                        |
+| 5     | Canvas renderer + constants               | Extract shared `constants.ts`; port `pdk_layout.c`/`pdk_draw.c` to TS, render to `@napi-rs/canvas`                                                                          |
+| 6     | Snapshot testing                          | `renderScreen()` → PNG, `toMatchPlaydateSnapshot()` vitest matcher, golden masters from simulator                                                                           |
+| 7     | C reference harness + parity              | Build C harness, pixel-level PBT (Canvas vs C), CI drift detection, validate with real screens                                                                              |
 
 ## Key Risks
 
