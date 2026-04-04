@@ -1,0 +1,27 @@
+{
+  "name": "pdk-tsx",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --pretty",
+    "lint": "eslint --color --cache --cache-location .eslintcache '{src,test}/**/*.ts'",
+    "lint:fix": "eslint --color --cache --cache-location .eslintcache --fix '{src,test}/**/*.ts'"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@vitest/coverage-v8": "^4.1.0",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-check-file": "^3.3.1",
+    "eslint-plugin-perfectionist": "^5.6.0",
+    "eslint-plugin-prettier": "^5.5.5",
+    "globals": "^16.5.0",
+    "prettier": "^3.8.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1",
+    "vitest": "^4.1.0"
+  }
+}

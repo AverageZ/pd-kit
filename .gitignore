@@ -5,3 +5,6 @@ build/
 compile_commands.json
 .DS_Store
 .vscode/
+dist/
+node_modules
+.eslintcache

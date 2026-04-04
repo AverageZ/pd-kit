@@ -4,7 +4,12 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "0"
   },
   "permissions": {
-    "allow": ["Bash(gh label:*)"]
+    "allow": [
+      "Bash(gh label:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(pnpm lint:*)"
+    ]
   },
   "hooks": {
     "PostToolUse": [
