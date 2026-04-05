@@ -60,6 +60,17 @@ export type PropIR = {
   tsType: 'number' | 'boolean' | 'string' | 'string[]' | 'number[]';
 };
 
+export type ValidationError = {
+  col: number;
+  file: string;
+  line: number;
+  message: string;
+};
+
+export type ValidationResult =
+  | { valid: true }
+  | { errors: ValidationError[]; valid: false };
+
 export type ScreenIR = {
   border: number;
   hasRawC: boolean;
