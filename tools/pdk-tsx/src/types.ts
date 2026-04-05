@@ -1,3 +1,5 @@
+import type ts from 'typescript';
+
 export type ExprIR =
   | { kind: 'arithmetic'; left: ExprIR; op: '+' | '-' | '*'; right: ExprIR }
   | {
@@ -63,6 +65,14 @@ export type ScreenIR = {
   hasRawC: boolean;
   layouts: LayoutIR[];
   name: string;
+  props: PropIR[];
+  sourceFile: string;
+  staticArrays: StaticArrayIR[];
+};
+
+export type ParsedScreen = {
+  functionName: string;
+  jsxBody: ts.JsxElement;
   props: PropIR[];
   sourceFile: string;
   staticArrays: StaticArrayIR[];
