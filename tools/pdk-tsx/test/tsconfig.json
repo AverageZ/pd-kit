@@ -1,9 +1,10 @@
 {
   "compilerOptions": {
     "jsx": "preserve",
-    "strict": false,
+    "strict": true,
     "noEmit": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "lib": ["es2022"]
   },
-  "include": ["fixtures/**/*.tsx"]
+  "include": ["fixtures/**/*.tsx", "fixtures/**/*.d.ts"]
 }
