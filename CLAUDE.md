@@ -11,6 +11,9 @@ A shared library of common Playdate game utilities.
 
 - **Run tests**: `make test` (compiles pure-math modules with system `cc`, no SDK needed)
 - **Clean**: `make clean`
+- **Install hooks**: `make install-hooks` (run once after cloning)
+- **Format code**: `make format` (requires `brew install llvm`)
+- **Check format**: `make format-check`
 
 ## Modules
 

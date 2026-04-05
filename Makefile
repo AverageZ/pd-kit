@@ -16,3 +16,19 @@ test:
 .PHONY: clean
 clean:
 	rm -rf build
+
+# ── Code formatting (clang-format) ──────────────────────────────────
+LLVM_BIN = /opt/homebrew/opt/llvm/bin
+PDK_SRC  = src/*.c src/*.h include/*.h
+
+.PHONY: format format-check install-hooks
+
+format:
+	$(LLVM_BIN)/clang-format -i $(PDK_SRC)
+
+format-check:
+	$(LLVM_BIN)/clang-format --dry-run -Werror $(PDK_SRC)
+
+# ── Git hooks ───────────────────────────────────────────────────────
+install-hooks:
+	git config core.hooksPath .githooks

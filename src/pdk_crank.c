@@ -8,14 +8,13 @@
 
 #include "pdk_crank.h"
 
-float pdk_crank_map(float crankAngle, float window, float outMin,
-                    float outMax) {
-  float clamped = crankAngle;
-  if (clamped > 180.0f)
-    clamped = 0.0f;
-  if (clamped > window)
-    clamped = window;
+float pdk_crank_map(float crankAngle, float window, float outMin, float outMax) {
+    float clamped = crankAngle;
+    if (clamped > 180.0f)
+        clamped = 0.0f;
+    if (clamped > window)
+        clamped = window;
 
-  float t = clamped / window;
-  return outMin + t * (outMax - outMin);
+    float t = clamped / window;
+    return outMin + t * (outMax - outMin);
 }

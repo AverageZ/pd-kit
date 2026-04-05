@@ -29,27 +29,22 @@ PdkLayout pdk_layout_start_ex(int y, int lineGap, int marginX) {
 }
 
 /* ── Internal: draw text with a specific font and alignment ────────── */
-static void drawAligned(const char *text, int y, int marginX, PdkAlign align,
-                        LCDFont *f) {
+static void drawAligned(const char *text, int y, int marginX, PdkAlign align, LCDFont *f) {
     /* Temporarily swap font if different from current */
     pd->graphics->setFont(f);
 
     switch (align) {
     case PDK_ALIGN_CENTER: {
-        int w = pd->graphics->getTextWidth(f, text, strlen(text),
-                                           kUTF8Encoding, 0);
-        pd->graphics->drawText(text, strlen(text), kUTF8Encoding,
-                               (LCD_COLUMNS - w) / 2, y);
+        int w = pd->graphics->getTextWidth(f, text, strlen(text), kUTF8Encoding, 0);
+        pd->graphics->drawText(text, strlen(text), kUTF8Encoding, (LCD_COLUMNS - w) / 2, y);
         break;
     }
     case PDK_ALIGN_LEFT:
         pd->graphics->drawText(text, strlen(text), kUTF8Encoding, marginX, y);
         break;
     case PDK_ALIGN_RIGHT: {
-        int w = pd->graphics->getTextWidth(f, text, strlen(text),
-                                           kUTF8Encoding, 0);
-        pd->graphics->drawText(text, strlen(text), kUTF8Encoding,
-                               LCD_COLUMNS - marginX - w, y);
+        int w = pd->graphics->getTextWidth(f, text, strlen(text), kUTF8Encoding, 0);
+        pd->graphics->drawText(text, strlen(text), kUTF8Encoding, LCD_COLUMNS - marginX - w, y);
         break;
     }
     }
@@ -76,8 +71,7 @@ void pdk_layout_menu_item(PdkLayout *L, const char *text, int selected) {
     int padY = (boxH - fontH) / 2; /* center text vertically in highlight */
 
     if (selected) {
-        pd->graphics->fillRect(L->marginX, L->y - padY,
-                               LCD_COLUMNS - 2 * L->marginX, boxH,
+        pd->graphics->fillRect(L->marginX, L->y - padY, LCD_COLUMNS - 2 * L->marginX, boxH,
                                kColorBlack);
         pd->graphics->setDrawMode(kDrawModeInverted);
     }
@@ -95,4 +89,6 @@ void pdk_layout_divider(PdkLayout *L) {
     L->y += 12; /* Dividers use a tighter advance than text lines */
 }
 
-void pdk_layout_gap(PdkLayout *L, int pixels) { L->y += pixels; }
+void pdk_layout_gap(PdkLayout *L, int pixels) {
+    L->y += pixels;
+}

@@ -1,0 +1,29 @@
+# pd-kit — clang-format config
+# Run: make format
+
+BasedOnStyle: LLVM
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 100
+
+# Pointer style: char *foo (C convention, not char* foo)
+PointerAlignment: Right
+
+# Braces on same line for functions and control flow
+BreakBeforeBraces: Attach
+
+# Don't reorder includes — Playdate SDK header order matters
+SortIncludes: Never
+
+# Single-line control flow is fine for short returns
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Empty
+
+# Switch/case
+IndentCaseLabels: false
+
+# Align consecutive assignments for readability in game code
+AlignConsecutiveAssignments: false
+AlignConsecutiveMacros: true

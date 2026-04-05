@@ -1,0 +1,30 @@
+#!/bin/sh
+set -e
+
+LLVM_BIN=/opt/homebrew/opt/llvm/bin
+
+# Format check (skip if clang-format not installed)
+if [ -x "$LLVM_BIN/clang-format" ]; then
+    echo "==> Checking formatting..."
+    if ! $LLVM_BIN/clang-format --dry-run -Werror src/*.c src/*.h include/*.h 2>/dev/null; then
+        echo "ERROR: Files need formatting. Run 'make format' to fix."
+        exit 1
+    fi
+else
+    echo "==> Skipping format check (clang-format not found)"
+fi
+
+echo "==> Running C tests..."
+make test
+
+# ── pdk-tsx (TypeScript) ────────────────────────────────────────────
+echo "==> Running pdk-tsx lint..."
+pnpm --dir tools/pdk-tsx lint
+
+echo "==> Running pdk-tsx typecheck..."
+pnpm --dir tools/pdk-tsx typecheck
+
+echo "==> Running pdk-tsx tests..."
+pnpm --dir tools/pdk-tsx test
+
+echo "==> All pre-commit checks passed."

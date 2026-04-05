@@ -16,11 +16,7 @@
 #include "pd_api.h"
 
 /* ── Alignment ─────────────────────────────────────────────────────── */
-typedef enum {
-    PDK_ALIGN_LEFT,
-    PDK_ALIGN_CENTER,
-    PDK_ALIGN_RIGHT
-} PdkAlign;
+typedef enum { PDK_ALIGN_LEFT, PDK_ALIGN_CENTER, PDK_ALIGN_RIGHT } PdkAlign;
 
 /* ── Layout cursor ─────────────────────────────────────────────────── */
 /* Stack-allocated. Fields are public — tweak marginX inline for one-off
@@ -76,6 +72,8 @@ void pdk_layout_gap(PdkLayout *L, int pixels);
 /* ── Querying ──────────────────────────────────────────────────────── */
 
 /** Read current Y position. Use for custom draw calls, then gap() to advance. */
-static inline int pdk_layout_y(const PdkLayout *L) { return L->y; }
+static inline int pdk_layout_y(const PdkLayout *L) {
+    return L->y;
+}
 
 #endif /* PDK_LAYOUT_H */

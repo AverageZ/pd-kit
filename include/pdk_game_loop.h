@@ -18,13 +18,13 @@
  * Usage:
  *   GameContext *ctx = PDK_ALLOC(pd, GameContext);
  */
-#define PDK_ALLOC(pd, type)                                                    \
-  (type *)({                                                                   \
-    void *_p = (pd)->system->realloc(NULL, sizeof(type));                      \
-    if (_p)                                                                    \
-      __builtin_memset(_p, 0, sizeof(type));                                   \
-    _p;                                                                        \
-  })
+#define PDK_ALLOC(pd, type)                                                                        \
+    (type *)({                                                                                     \
+        void *_p = (pd)->system->realloc(NULL, sizeof(type));                                      \
+        if (_p)                                                                                    \
+            __builtin_memset(_p, 0, sizeof(type));                                                 \
+        _p;                                                                                        \
+    })
 
 /**
  * Standard Playdate event handler DLL export prefix.

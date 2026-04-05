@@ -68,10 +68,10 @@ int pbt_check(const char *name, PBTProperty prop, void *ctx, int num_runs);
 /* ── Assertion helpers ────────────────────────────────────────────── */
 
 /** Return failure (property violated) if condition is false. */
-#define PBT_ASSERT(cond)                                                       \
-    do {                                                                        \
-        if (!(cond))                                                            \
-            return 0;                                                           \
+#define PBT_ASSERT(cond)                                                                           \
+    do {                                                                                           \
+        if (!(cond))                                                                               \
+            return 0;                                                                              \
     } while (0)
 
 /** Return success (property holds). Use at the end of every property. */

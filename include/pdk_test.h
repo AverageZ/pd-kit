@@ -27,11 +27,11 @@
 #include <stdio.h>
 
 /** Assert with a descriptive message printed on success. */
-#define PDK_ASSERT(expr, msg)                                                  \
-  do {                                                                         \
-    assert(expr);                                                              \
-    printf("  PASS: %s\n", (msg));                                             \
-  } while (0)
+#define PDK_ASSERT(expr, msg)                                                                      \
+    do {                                                                                           \
+        assert(expr);                                                                              \
+        printf("  PASS: %s\n", (msg));                                                             \
+    } while (0)
 
 /** Print a suite header. */
 #define PDK_TEST_SUITE(name) printf("=== %s ===\n\n", (name))
